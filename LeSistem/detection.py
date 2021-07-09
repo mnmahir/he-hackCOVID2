@@ -4,7 +4,7 @@ import cv2
 def goDetect(oriframe, bounding_box = True, print_info = False):
     # ======= DETECTION =======
     outframe,faces = face_detect(oriframe, bounding_box)    # Face Detection: send original frame for detection
-    # outframe, infos = socdist_detect(oriframe, outframe, bounding_box)     # Social Distancing Detection: Use original frame for detection then append bounding box to previous frame
+    outframe = socdist_detect(oriframe, outframe, bounding_box)     # Social Distancing Detection: Use original frame for detection then append bounding box to previous frame
     # ======= DISPLAY INFO =======
     if print_info:
         print("Found {0} faces!".format(faces))
@@ -32,5 +32,19 @@ def face_detect(frame, bounding_box = True):
 
 
 # >METHOD FOR SOCIAL DISTANCING DETECTION
+hog = cv2.HOGDescriptor()
+hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 def socdist_detect(oriframe, prevframe, bounding_box = True):
-    pass
+
+    (regions, _) = hog.detectMultiScale(oriframe, 
+                                            winStride=(4, 4),
+                                            padding=(8, 8),
+                                            scale=1.03)
+
+    if bounding_box:
+        for (x, y, w, h) in regions:
+                cv2.rectangle(prevframe, (x, y), 
+                            (x + w, y + h), 
+                            (255, 0, 0), 2)
+    
+    return prevframe
