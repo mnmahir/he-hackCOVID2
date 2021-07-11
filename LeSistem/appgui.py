@@ -9,7 +9,7 @@ from webcamvid import VideoCapture
 from detection import *
 
 class App:
-    def __init__(self, window, window_title, video_source=0):
+    def __init__(self, window, window_title, video_source=0, frame_size = (640,480)):
         # ======= APP GUI ATTR =======
         self.window = window
         self.window.title(window_title)
@@ -53,17 +53,17 @@ class App:
 
 
         # ======== WEBCAM DISPLAY WIDGET =======
+        self.frame_size = frame_size
         self.video_source = video_source
         # Canvas to fit above video source widget size
-        self.canvas = tk.Canvas(window, width = 640, height = 480)
+        self.canvas = tk.Canvas(window, width = frame_size[0], height = frame_size[1])
         # Widget Layout
         self.canvas.grid(row=1, column=1, rowspan=10)
         # Open webcam
         self.vid = VideoCapture(self.video_source)
         # Update frame from webcam and also detection info
-        self.delay = 10 # update frame in x millisecond + detection delay
+        self.delayupdate = 5 # update frame in x millisecond + detection delay
         self.update()
-
 
 
         # ======= LEAVE THIS AT THE END =======
@@ -75,20 +75,23 @@ class App:
     # >METHOD TO UPDATE FRAME AND DATAS IN APP GUI
     def update(self):
         ret, frame = self.vid.get_frame()   # Get a frame from the video source
-        frame, faces = goDetect(frame)      # Call method for detection
+        frame = cv2.resize(frame, self.frame_size,fx=0,fy=0, interpolation = cv2.INTER_CUBIC)
+        frame, faces, has_mask, no_mask = goDetect(frame)      # Call method for detection
 
         self.numofface_val.config(text=str(faces))
+        self.numofmask_val.config(text=str(has_mask))
+        self.numofnomask_val.config(text=str(no_mask))
         if ret:
             self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
             self.canvas.create_image(0, 0, image = self.photo, anchor = tk.NW)
-        self.window.after(self.delay,self.update)
-
+        self.window.after(self.delayupdate,self.update)
 
 
     # >METHOD TO TAKE SNAPSHOT
     def snapshot(self):
         ret,frame = self.vid.get_frame()      # Get a frame from the video source
-        frame, faces = goDetect(frame)             # Call method for detection
+        frame = cv2.resize(frame, self.frame_size,fx=0,fy=0, interpolation = cv2.INTER_CUBIC)
+        frame, faces, has_mask, no_mask  = goDetect(frame)             # Call method for detection
         if ret:
             cv2.imwrite("frame-"+time.strftime("%d-%m-%Y-%H-%M-%S")+".jpg",cv2.cvtColor(frame,cv2.COLOR_RGB2BGR))
 
