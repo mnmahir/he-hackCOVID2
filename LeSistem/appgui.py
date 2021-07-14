@@ -163,7 +163,7 @@ class App:
         print("Auto snap check")
         frame = cv2.resize(frame, self.frame_size,fx=0,fy=0, interpolation = cv2.INTER_CUBIC)
         frame, faces, has_mask, no_mask, soc_dist_violate, total_people = goDetect(frame)             # Call method for detection
-        if total_people >= self.slider.get():
+        if total_people > self.slider.get():
             self.numofpeople_stat.config(text="ALERT", bg = "red")
         else:
             self.numofpeople_stat.config(text="NORMAL", bg = "green")
