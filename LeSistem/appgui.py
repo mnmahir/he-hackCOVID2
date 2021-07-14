@@ -35,7 +35,7 @@ class App:
         self.face.grid(row=5, column=2, sticky='w')
         self.mask.grid(row=6, column=2, sticky='w')
         self.nomask.grid(row=7, column=2, sticky='w')
-        self.logo.grid(row=8, column=2, sticky='w', columnspan=3)
+        self.logo.grid(row=8, column=2, columnspan=3)
         # Image data
         self.img_people = PIL.ImageTk.PhotoImage(PIL.Image.open("icon/people3.png"))  
         self.people.create_image(10, 10, anchor='nw', image=self.img_people)
@@ -170,13 +170,13 @@ class App:
 
         if soc_dist_violate >= 1:
             self.numofviolations_stat.config(text="ALERT", bg = "red")
-            cv2.imwrite("snapshot/frame-socdist"+time.strftime("%d-%m-%Y-%H-%M-%S")+".jpg",cv2.cvtColor(frame,cv2.COLOR_RGB2BGR))
+            cv2.imwrite("snapshot/social_distancing_violation/frame-socdist"+time.strftime("%d-%m-%Y-%H-%M-%S")+".jpg",cv2.cvtColor(frame,cv2.COLOR_RGB2BGR))
         else:
             self.numofviolations_stat.config(text="NORMAL", bg = "green")
 
         if no_mask >= 1:
             self.numofnomask_stat.config(text="ALERT", bg = "red")
-            cv2.imwrite("snapshot/frame-nomask"+time.strftime("%d-%m-%Y-%H-%M-%S")+".jpg",cv2.cvtColor(frame,cv2.COLOR_RGB2BGR))
+            cv2.imwrite("snapshot/nomask/frame-nomask"+time.strftime("%d-%m-%Y-%H-%M-%S")+".jpg",cv2.cvtColor(frame,cv2.COLOR_RGB2BGR))
         else:
             self.numofnomask_stat.config(text="NORMAL", bg = "green")
         
