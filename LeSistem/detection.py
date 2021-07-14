@@ -35,7 +35,6 @@ def detect_mask(frame, bounding_box = True):
     blob = cv2.dnn.blobFromImage(frame, 1.0, (224, 224),(104.0, 177.0, 123.0))
     faceNet.setInput(blob)
     detections = faceNet.forward()
-    print("detection123:",detections.shape)
     faces = []
     locs = []
     preds = []

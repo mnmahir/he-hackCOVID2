@@ -1,8 +1,8 @@
 # Import module
 from appgui import *
 
-vid_source = 0 #' change tp 'test.mp4' for video OR 0 for camera
-vid_size = (640,400)
+vid_source = "D:\Downloads\FLYING DURING THE PANDEMIC (Singapore to USA).mp4" #' change tp 'test.mp4' for video OR 0 for camera
+vid_size = (640,550)
 
 def main():
     # ======= TO CREATE A WINDOW AND PASS TO APP OBJECT =======
