@@ -74,10 +74,14 @@ class App:
 
     # >METHOD TO UPDATE FRAME AND DATAS IN APP GUI
     def update(self):
+        t_start = time.time()
         ret, frame = self.vid.get_frame()   # Get a frame from the video source
         frame = cv2.resize(frame, self.frame_size,fx=0,fy=0, interpolation = cv2.INTER_CUBIC)
-        frame, faces, has_mask, no_mask = goDetect(frame)      # Call method for detection
+        frame, faces, has_mask, no_mask, soc_dist_violate, total_people = goDetect(frame)      # Call method for detection
+        
 
+        self.numofpeople_val.config(text=str(total_people))
+        self.numofviolations_val.config(text=str(soc_dist_violate))
         self.numofface_val.config(text=str(faces))
         self.numofmask_val.config(text=str(has_mask))
         self.numofnomask_val.config(text=str(no_mask))
@@ -85,13 +89,15 @@ class App:
             self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
             self.canvas.create_image(0, 0, image = self.photo, anchor = tk.NW)
         self.window.after(self.delayupdate,self.update)
+        t_end = time.time()
+        print("Delay: {:.2f}ms".format((t_end-t_start)*1000))
 
 
     # >METHOD TO TAKE SNAPSHOT
     def snapshot(self):
         ret,frame = self.vid.get_frame()      # Get a frame from the video source
         frame = cv2.resize(frame, self.frame_size,fx=0,fy=0, interpolation = cv2.INTER_CUBIC)
-        frame, faces, has_mask, no_mask  = goDetect(frame)             # Call method for detection
+        frame, faces, has_mask, no_mask, soc_dist_violate, total_people = goDetect(frame)             # Call method for detection
         if ret:
             cv2.imwrite("frame-"+time.strftime("%d-%m-%Y-%H-%M-%S")+".jpg",cv2.cvtColor(frame,cv2.COLOR_RGB2BGR))
 

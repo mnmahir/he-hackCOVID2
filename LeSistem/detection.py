@@ -1,30 +1,33 @@
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.models import load_model
-from imutils.video import VideoStream
 import numpy as np
-import imutils
-import time
 import cv2
 import os
 
+from socdist import social_distancing_config as config
+from socdist.detection import detect_people
+from scipy.spatial import distance as dist
+
+
 # >MASTER METHOD
 def goDetect(oriframe, bounding_box = True, print_info = False):
+    # faces, has_mask, no_mask, soc_dist_violate, total_people = 0,0,0,0,0
     # ======= DETECTION =======
     outframe,faces, has_mask, no_mask = detect_mask(oriframe, bounding_box)    # Face Detection: send original frame for detection
-    # outframe = socdist_detect(oriframe, outframe, bounding_box)     # Social Distancing Detection: Use original frame for detection then append bounding box to previous frame
+    outframe, soc_dist_violate, total_people = socdist_detect(oriframe, outframe, bounding_box)     # Social Distancing Detection: Use original frame for detection then append bounding box to previous frame
     # ======= DISPLAY INFO =======
     if print_info:
         print("Found {0} faces!".format(faces))
 
-    return outframe, faces, has_mask, no_mask  # and other infos to put in gui
+    return outframe, faces, has_mask, no_mask, soc_dist_violate, total_people  # and other infos to put in gui
 
 
 # >METHOD FOR FACE DETECTION (TO BE EXTENDED WITH MASK DETECTION)
-prototxtPath = r"D:\Project\Face-Mask-Detection\face_detector\deploy.prototxt"
-weightsPath = r"D:\Project\Face-Mask-Detection\face_detector\res10_300x300_ssd_iter_140000.caffemodel"
+prototxtPath = r"face_detector\deploy.prototxt"
+weightsPath = r"face_detector\res10_300x300_ssd_iter_140000.caffemodel"
 faceNet = cv2.dnn.readNet(prototxtPath, weightsPath)
-maskNet = load_model("D:\Project\Face-Mask-Detection\mask_detector.model")
+maskNet = load_model("face_detector\mask_detector.model")
 
 def detect_mask(frame, bounding_box = True):
     # ======= FACE AND MASK DETECTION =======
@@ -32,6 +35,7 @@ def detect_mask(frame, bounding_box = True):
     blob = cv2.dnn.blobFromImage(frame, 1.0, (224, 224),(104.0, 177.0, 123.0))
     faceNet.setInput(blob)
     detections = faceNet.forward()
+    print("detection123:",detections.shape)
     faces = []
     locs = []
     preds = []
@@ -81,19 +85,58 @@ def detect_mask(frame, bounding_box = True):
 
 
 # >METHOD FOR SOCIAL DISTANCING DETECTION
-hog = cv2.HOGDescriptor()
-hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+labelsPath = os.path.sep.join([config.MODEL_PATH, "coco.names"])
+LABELS = open(labelsPath).read().strip().split("\n")
+weightsPath = os.path.sep.join([config.MODEL_PATH, "yolo-fastest-1.1-xl.weights"])
+configPath = os.path.sep.join([config.MODEL_PATH, "yolo-fastest-1.1-xl.cfg"])
+net = cv2.dnn.readNetFromDarknet(configPath, weightsPath)
+if config.USE_GPU:
+	# set CUDA as the preferable backend and target
+	print("[INFO] setting preferable backend and target to CUDA...")
+	net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+	net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+ln = net.getLayerNames()
+ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
+
 def socdist_detect(oriframe, prevframe, bounding_box = True):
+    results = detect_people(oriframe, net, ln, personIdx=LABELS.index("person"))
+    violate = set()
 
-    (regions, _) = hog.detectMultiScale(oriframe, 
-                                            winStride=(4, 4),
-                                            padding=(8, 8),
-                                            scale=1.03)
+    if len(results) >= 2:
+        # extract all centroids from the results and compute the
+        # Euclidean distances between all pairs of the centroids
+        centroids = np.array([r[2] for r in results])
+        D = dist.cdist(centroids, centroids, metric="euclidean")
 
-    if bounding_box:
-        for (x, y, w, h) in regions:
-                cv2.rectangle(prevframe, (x, y), 
-                            (x + w, y + h), 
-                            (255, 0, 0), 2)
-    
-    return prevframe
+        # loop over the upper triangular of the distance matrix
+        for i in range(0, D.shape[0]):
+            for j in range(i + 1, D.shape[1]):
+                # check to see if the distance between any two
+                # centroid pairs is less than the configured number
+                # of pixels
+                if D[i, j] < config.MIN_DISTANCE:
+                    # update our violation set with the indexes of
+                    # the centroid pairs
+                    violate.add(i)
+                    violate.add(j)
+
+    # loop over the results
+    for (i, (prob, bbox, centroid)) in enumerate(results):
+        # extract the bounding box and centroid coordinates, then
+        # initialize the color of the annotation
+        (startX, startY, endX, endY) = bbox
+        (cX, cY) = centroid
+        color = (0, 102, 255)
+
+        # if the index pair exists within the violation set, then
+        # update the color
+        if i in violate:
+            color = (255, 153, 0)
+
+        # draw (1) a bounding box around the person and (2) the
+        # centroid coordinates of the person,
+        cv2.rectangle(prevframe, (startX, startY), (endX, endY), color, 2)
+        cv2.circle(prevframe, (cX, cY), 5, color, 1)
+
+
+    return prevframe, len(violate), len(results)
