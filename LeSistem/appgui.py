@@ -104,7 +104,7 @@ class App:
         # Update frame from webcam and also detection info
         self.delayupdate = 5 # update frame in x millisecond + detection delay
         self.update()
-        self.delay_snap = 2000 # check every 2 second
+        self.delay_snap = 1000 # check every x milli second
         self.auto_snap()
 
 
